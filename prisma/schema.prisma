@@ -1,0 +1,204 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Site content (edited in /admin)
+// ─────────────────────────────────────────────────────────────────────────
+
+/// Singleton row (id = 1) holding the profile, copy and links.
+model SiteSettings {
+  id             Int      @id @default(1)
+  name           String
+  title          String // "Lead Developer"
+  location       String // "Toronto, Ontario"
+  coordinates    String // "43.65° N · 79.38° W — Toronto"
+  tagline        String // "Lead developer, full stack."
+  heroBody       String
+  aboutSubtitle  String
+  aboutBody      String[]
+  skillsIntro    String
+  email          String
+  phone          String?
+  siteUrl        String?
+  linkedinUrl    String?
+  githubUrl      String?
+  githubUsername String?
+  portraitUrl    String
+  logoUrl        String
+  resumeUrl      String
+  resumePages    Int      @default(2)
+  bootMessages   String[]
+  bootSeconds    Float    @default(3)
+  /// "none" | "about" | "projects"
+  openOnLogin    String   @default("none")
+  updatedAt      DateTime @updatedAt
+}
+
+model Highlight {
+  id        String   @id @default(cuid())
+  text      String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([order])
+}
+
+model Project {
+  id            String   @id @default(cuid())
+  /// File name shown on the desktop, e.g. "skincan.proj". Unique.
+  fileName      String   @unique
+  title         String
+  client        String
+  summary       String
+  url           String?
+  stack         String[]
+  /// [{ value: "45", label: "tests on every push" }]
+  figures       Json     @default("[]")
+  bullets       String[]
+  screenshotUrl String?
+  draft         Boolean  @default(false)
+  order         Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([order])
+}
+
+model Role {
+  id        String   @id @default(cuid())
+  period    String // "08/2022 — Present"
+  title     String
+  org       String
+  place     String
+  bullets   String[]
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([order])
+}
+
+model Certification {
+  id        String   @id @default(cuid())
+  year      String
+  name      String
+  org       String
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([order])
+}
+
+model SkillGroup {
+  id        String   @id @default(cuid())
+  name      String
+  items     String[]
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([order])
+}
+
+model ContactMessage {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  subject   String
+  body      String
+  ipHash    String?
+  emailed   Boolean  @default(false)
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([ipHash, createdAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// better-auth
+// ─────────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role             String      @default("user")
+  twoFactorEnabled Boolean?    @default(false)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @default(now()) @updatedAt
+  sessions         Session[]
+  accounts         Account[]
+  twoFactors       TwoFactor[]
+
+  @@map("user")
+}
+
+model Session {
+  id        String   @id
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  @@index([userId])
+  @@map("account")
+}
+
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @default(now()) @updatedAt
+
+  @@index([identifier])
+  @@map("verification")
+}
+
+model TwoFactor {
+  id                      String    @id
+  secret                  String
+  backupCodes             String
+  userId                  String
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  verified                Boolean?  @default(true)
+  failedVerificationCount Int?      @default(0)
+  lockedUntil             DateTime?
+
+  @@index([secret])
+  @@index([userId])
+  @@map("twoFactor")
+}
